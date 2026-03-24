@@ -1,7 +1,7 @@
 {
   "name": "faba-me-uploader",
-  "version": "1.0.0",
-  "description": "Upload MP3/audio files to Faba•Me personaggi sonori via studio.myfaba.com share links",
+  "version": "2.0.0",
+  "description": "Upload MP3/audio to Faba•Me via studio.myfaba.com share links",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -18,7 +18,5 @@
   "devDependencies": {
     "nodemon": "^3.0.0"
   },
-  "engines": {
-    "node": ">=18.0.0"
-  }
+  "engines": { "node": ">=18.0.0" }
 }

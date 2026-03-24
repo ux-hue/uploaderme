@@ -1,114 +1,63 @@
-# 🎵 Faba•Me Audio Uploader
+# 🎵 Faba•Me Audio Uploader v2
 
-Web app mobile-first per caricare file MP3/audio su **Faba•Me** (Personaggio Sonoro di FABA+) tramite il link d'invito generato dall'app MyFaba.
+Webapp mobile-first per caricare file audio su Faba•Me (personaggio sonoro di FABA+) tramite il link d'invito dell'app MyFaba.
 
-## Come funziona
+## Fix v2 rispetto alla v1
 
-Il sistema Faba•Me permette all'utente di condividere un link temporaneo (24 ore) tramite l'app MyFaba, affinché parenti o amici possano registrare una voce. Questa webapp estende quella funzionalità permettendo di **caricare un file audio già pronto** (MP3, WAV, ecc.) invece di registrare dal microfono.
+- **413 risolto**: l'audio viene convertito in WAV 22050Hz mono (≈ 2.5MB/min) invece di 44100Hz stereo, molto sotto il limite dell'API Faba
+- **Multiupload**: si possono aggiungere più file contemporaneamente, ognuno con il suo titolo, caricati uno alla volta in coda
+- **UX semplificata**: design pensato per genitori, flusso in 4 step chiari
+- **Titolo per-file**: ogni file nella coda ha il suo campo titolo modificabile
 
-**Flusso:**
-1. L'utente incolla il link tipo `https://studio.myfaba.com/record/XXXXXXXXXX`
-2. La webapp verifica il link e ne legge la sessione
-3. L'utente carica un file MP3/audio e inserisce titolo + autore
-4. Il server converte l'audio in WAV (44100Hz, stereo, PCM 16bit) e lo carica sul cloud MyFaba
-5. Il proprietario del Faba•Me riceve la notifica sull'app e può sincronizzare il dispositivo
+## Setup locale
 
-## Requisiti
-
-- **Node.js** ≥ 18
-- **ffmpeg** installato nel sistema
-
-### Installazione ffmpeg
+**Requisiti:** Node.js ≥ 18 + ffmpeg installato
 
 ```bash
-# macOS
+# Installa ffmpeg (macOS)
 brew install ffmpeg
 
-# Ubuntu/Debian
+# Installa ffmpeg (Ubuntu/Debian)
 sudo apt install ffmpeg
 
-# Windows: scarica da https://ffmpeg.org/download.html
-```
-
-## Setup e avvio
-
-```bash
-# 1. Installa dipendenze
+# Installa dipendenze Node
 npm install
 
-# 2. Avvia il server
+# Avvia
 npm start
-
-# Oppure in sviluppo con auto-reload
-npm run dev
+# → http://localhost:3000
 ```
 
-Il server parte su `http://localhost:3000`.
+## Deploy su Render
 
-## Deploy
+1. Crea un nuovo **Web Service** su render.com
+2. Collegalo al repo GitHub
+3. **Build command:** `npm install`
+4. **Start command:** `node server.js`
+5. Aggiungi i buildpack per ffmpeg:
 
-### Con PM2 (VPS / server)
+   Nella tab **Environment**, aggiungi:
+   ```
+   FFMPEG_PATH=/usr/bin/ffmpeg
+   ```
 
-```bash
-npm install -g pm2
-pm2 start server.js --name faba-uploader
-pm2 save
-pm2 startup
-```
+   Oppure usa il Dockerfile incluso (seleziona "Docker" come ambiente su Render).
 
-### Con Docker
+### Render con Docker (consigliato)
 
-```dockerfile
-FROM node:20-slim
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-COPY . .
-EXPOSE 3000
-CMD ["node", "server.js"]
-```
+Su Render, seleziona **"Docker"** come Runtime — il Dockerfile incluso installa automaticamente ffmpeg.
 
-```bash
-docker build -t faba-uploader .
-docker run -p 3000:3000 faba-uploader
-```
+### Nota Render free tier
 
-### Con Render / Railway / Fly.io
+Il servizio free di Render va in sleep dopo 15 minuti di inattività. Il primo caricamento dopo il sleep può richiedere 30-60 secondi. Per uso continuo considera il piano $7/mese.
 
-Questi servizi supportano applicazioni Node.js + ffmpeg. Aggiungi ffmpeg nel build step se richiesto.
+## Come funziona il multiupload
 
-### Con Nginx (reverse proxy)
+Il link d'invito MyFaba rimane valido per 24 ore e accetta **upload multipli sullo stesso link** (come confermato anche dal plugin FabaMore). Per ogni file:
 
-```nginx
-server {
-    listen 80;
-    server_name tuodominio.it;
+1. Il server si ri-autentica con il link (nuova sessione)
+2. Converte l'audio in WAV compresso
+3. Fa il POST verso il cloud MyFaba
+4. L'utente riceve una notifica nell'app per ogni traccia
 
-    client_max_body_size 200M;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_read_timeout 300s;
-    }
-}
-```
-
-## Note tecniche
-
-- Il server fa da **proxy** verso l'API `studio.myfaba.com` per evitare problemi CORS
-- Usa lo stesso flusso HTTP del progetto open-source [60ne/faba-tools](https://github.com/60ne/faba-tools)
-- L'audio viene convertito in **WAV PCM 16bit, 44100Hz, stereo** (formato richiesto dall'API Faba)
-- I file temporanei vengono eliminati automaticamente dopo l'upload
-- Limite upload: 200MB per file
-
-## Formati audio supportati
-
-MP3, WAV, OGG, AAC, M4A (e qualsiasi formato supportato da ffmpeg)
-
-## Crediti
-
-Basato sulla ricerca del progetto [60ne/faba-tools](https://github.com/60ne/faba-tools) (Apache 2.0).
+Basato su [60ne/faba-tools](https://github.com/60ne/faba-tools) (Apache 2.0).
